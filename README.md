@@ -3,4 +3,5 @@
 
 源码修改自：[.NET开发一个微信跳一跳辅助程序](https://www.cnblogs.com/dotnet-org-cn/p/8149693.html)
 
-原版代码没有`adb.exe`，修改后的程序生成时打包了`adb.exe`，并修改了部分代码。
+1. 程序生成时打包了`adb.exe`。
+2. 自动识别小人的坐标。
