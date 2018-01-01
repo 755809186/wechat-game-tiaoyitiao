@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -30,6 +32,11 @@ namespace TiaoYiTiao
         /// 是否存在安卓
         /// </summary>
         private bool HasAndroid = false;
+
+        /// <summary>
+        /// 是否自动识别图像
+        /// </summary>
+        bool isAutoRecognize = false;
 
         /// <summary>
         /// 截屏后的文件
@@ -90,18 +97,25 @@ namespace TiaoYiTiao
             var me = ((MouseEventArgs)(e));
             if (me.Button==MouseButtons.Left)//按下左键是黑人底部的坐标
             {
-                _start = ((MouseEventArgs)(e)).Location;
-                //toolStripStatusLabel1.Text = "左健点击起始位置，右键点击结束位置";
-            }
-            else if (me.Button == MouseButtons.Right)//按下右键键是黑人底部的坐标
-            {
+                if (_start.IsEmpty)
+                {
+                    MessageBox.Show("右健点击起始位置，左键点击结束位置");
+                    return;
+                }
                 _end = ((MouseEventArgs)(e)).Location;
                 //计算两点直接的距离
                 double value = Math.Sqrt(Math.Abs(_start.X - _end.X) * Math.Abs(_start.X - _end.X) + Math.Abs(_start.Y - _end.Y) * Math.Abs(_start.Y - _end.Y));
 
+                _start = Point.Empty;
+
                 //this.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, (3.999022243950134 * value).ToString("0")); 
                 //3.999022243950134  这个是我通过多次模拟后得到 我这个分辨率的最佳时间
                 cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", (3.999022243950134 * value).ToString("0")));
+            }
+            else if (me.Button == MouseButtons.Right)//按下右键键是黑人底部的坐标
+            {
+                _start = ((MouseEventArgs)(e)).Location;
+                //toolStripStatusLabel1.Text = "右健点击起始位置，左键点击结束位置";
             }
         }
         #endregion
@@ -151,7 +165,7 @@ namespace TiaoYiTiao
             {
                 HasAndroid = true;
                 isStop = false;
-                toolStripStatusLabel1.Text = string.Format("【{0}】左健点击起始位置，右键点击结束位置", text.Trim());
+                toolStripStatusLabel1.Text = string.Format("【{0}】右健点击起始位置，左键点击结束位置", text.Trim());
 
                 bg_worker();
             }
@@ -163,6 +177,7 @@ namespace TiaoYiTiao
         {
             Task.Factory.StartNew(() =>
             {
+                Image img = null;
                 while (true)
                 {
                     if (isStop) break;
@@ -172,19 +187,27 @@ namespace TiaoYiTiao
 
                     if (!File.Exists(scPic)) continue;
 
-                    using (var img = Image.FromFile(scPic))
+                    using (img = Image.FromFile(scPic))
                     {
+                        // 尝试自动识别计算小人位置
+                        if (isAutoRecognize)
+                            autoRecognize(img);
+
                         pictureBox1.Invoke(new Action(() =>
                         {
                             pictureBox1.Image = new Bitmap(img);
                         }));
-                        img.Dispose();
+
+                        //img.Dispose();
+                        img = null;
                     }
                     File.Delete(scPic);
 
                     GC.Collect();
                     Thread.Sleep(1000);
                 }
+                if (img != null)
+                    img.Dispose();
             });
         }
         #endregion
@@ -227,6 +250,7 @@ namespace TiaoYiTiao
                 p.Start();
                 ret = p.StandardOutput.ReadToEnd();
                 p.Close();
+                p.Dispose();
             }
             return ret;
         }
@@ -257,6 +281,109 @@ namespace TiaoYiTiao
         //    // 电源键
         //    cmdAdb("shell input keyevent 26 ");
         //}
+
+        // 自动识别
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            this.isAutoRecognize = this.checkBox1.Checked;
+        }
+        #endregion
+
+        #region 自动识别并计算位置
+        // 小人尺寸：W:76, H:209
+        // 小人的颜色范围
+        struct RoleInfo
+        {
+            public static Color Top { get; private set; }
+            public static Color Bottom { get; private set; }
+            public static Color Left { get; private set; }
+            public static Color Right { get; private set; }
+            public static int Width { get; private set; }
+            public static int Height { get; private set; }
+
+            static RoleInfo()
+            {
+                Top = Color.FromArgb(52, 52, 59);
+                Bottom = Color.FromArgb(54, 60, 102);
+                Left = Color.FromArgb(43, 43, 73);
+                Right = Color.FromArgb(58, 54, 81);
+                Width = 76;
+                Height = 209;
+            }
+        }
+
+        /// <summary>
+        /// 自动识别
+        /// </summary>
+        /// <param name="image"></param>
+        private void autoRecognize(Image image)
+        {
+            //var image_rect = new Rectangle(0, 0, image.Width, image.Height);
+            //var pw = image.Width;// pictureBox1.Width;
+            //var ph = image.Height;// pictureBox1.Height;
+
+            Bitmap bitmap = new Bitmap(image);//, new Size(pw, ph)
+
+            //per = Math.Min(1, per);
+            //per = Math.Max(0, per);
+            Point top, right, bottom, left;
+            top = right = bottom = left = new Point();
+            // 左边距设定一个最大值
+            left.X = image.Width;
+            List<Color> ignoreColor = new List<Color>()
+            {
+                bitmap.GetPixel(0, 0), // 第一个像素
+                bitmap.GetPixel(0, image.Height/2), // 中间的像素
+                bitmap.GetPixel(0, image.Height-1) // 最底下的像素
+            };
+
+            Color color;
+
+            // 这一步操作比较耗时
+            for (int y = 0, h = image.Height; y < h; y++)
+            {
+                for (int x = 0, w = image.Width; x < w; x++)
+                {
+                    color = bitmap.GetPixel(x, y);
+                    
+                    //if (isSimilarColor(ignoreColor[0], color, 255)) continue;
+                    if (isSimilarColor(ignoreColor[1], color, 255)) continue;
+
+                    if (isSimilarColor(color, RoleInfo.Top) && top.IsEmpty)
+                        top = new Point(x, y);
+                    else if (isSimilarColor(color, RoleInfo.Bottom) && y > bottom.Y)
+                        bottom = new Point(x, y);
+                    else if (isSimilarColor(color, RoleInfo.Left) && x < left.X && y > left.Y)
+                        left = new Point(x, y);
+                    else if (isSimilarColor(color, RoleInfo.Right) && x > right.X && y > right.Y)
+                        right = new Point(x, y);
+                }
+            }
+            
+            var location = new Point(left.X + (right.X - left.X) / 2, left.Y);
+            float rate = (float)(pictureBox1.Width * 1.00 / image.Width * 1.00);
+            _start = new Point((int)(rate * location.X), (int)(rate * location.Y));
+
+            bitmap.Dispose();
+            using (Graphics g = Graphics.FromImage(image))// pictureBox1.CreateGraphics())
+            {
+                // 画边框
+                g.DrawRectangle(new Pen(Color.Red, 3), left.X, top.Y, right.X - left.X, bottom.Y - top.Y);
+                // 在中心画上一个点
+                g.FillEllipse(new SolidBrush(Color.Red), location.X - 2, location.Y - 2, 5, 5);
+                //g.Save();
+                g.Dispose();
+                //image.Save("2.png");
+            }
+            GC.Collect();
+        }
+
+        // 计算是否是近似颜色
+        private bool isSimilarColor(Color c1, Color c2, int offset=100) // 颜色近似值
+        {
+            int tmp = (int)(Math.Pow((c1.R - c2.R), 2) + Math.Pow((c1.G - c2.G), 2) + Math.Pow((c1.B - c2.B), 2));
+            return Math.Abs(tmp - offset) <= offset;
+        }
         #endregion
     }
 }

@@ -17,8 +17,15 @@ namespace TiaoYiTiao
         [STAThread]
         static void Main()
         {
-            loadDll();
-            Application.Run(new Form1());
+            try
+            {
+                loadDll();
+                Application.Run(new Form1());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("系统异常\r\n" + ex.Message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         #region loadDll
