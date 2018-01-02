@@ -110,6 +110,7 @@ namespace TiaoYiTiao
 
                 //this.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, (3.999022243950134 * value).ToString("0")); 
                 //3.999022243950134  这个是我通过多次模拟后得到 我这个分辨率的最佳时间
+                // 计算公式：比例=2560/设备屏幕高度
                 cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", (3.999022243950134 * value).ToString("0")));
             }
             else if (me.Button == MouseButtons.Right)//按下右键键是黑人底部的坐标
@@ -324,10 +325,22 @@ namespace TiaoYiTiao
 
             Bitmap bitmap = new Bitmap(image);//, new Size(pw, ph)
 
+            // 扫描区域：上下取中间1/3
+            int topX, topY, bottomX, bottomY;
+            topX = 0;
+            topY = image.Height * 1 / 3;
+            bottomX = image.Width;
+            bottomY = image.Height * 2 / 3;
+
             //per = Math.Min(1, per);
             //per = Math.Max(0, per);
             Point top, right, bottom, left;
             top = right = bottom = left = new Point();
+
+            // 目标顶点位置
+            Point targetTopPoint = new Point();
+            Color targetTopColor = new Color();
+
             // 左边距设定一个最大值
             left.X = image.Width;
             List<Color> ignoreColor = new List<Color>()
@@ -337,28 +350,73 @@ namespace TiaoYiTiao
                 bitmap.GetPixel(0, image.Height-1) // 最底下的像素
             };
 
-            Color color;
+            Color currentColor;
 
+            Stopwatch st = new Stopwatch();
+            st.Start();
             // 这一步操作比较耗时
-            for (int y = 0, h = image.Height; y < h; y++)
+            for (int y = topY, h = bottomY; y < h; y++)
             {
-                for (int x = 0, w = image.Width; x < w; x++)
+                for (int x = topX, w = bottomX; x < w; x++)
                 {
-                    color = bitmap.GetPixel(x, y);
-                    
-                    //if (isSimilarColor(ignoreColor[0], color, 255)) continue;
-                    if (isSimilarColor(ignoreColor[1], color, 255)) continue;
+                    currentColor = bitmap.GetPixel(x, y);
 
-                    if (isSimilarColor(color, RoleInfo.Top) && top.IsEmpty)
+                    /******************************* 小人 *******************************/
+                    //if (ColorHelper.CompareBaseRGB(ignoreColor[0], color, 255)) continue;
+                    //if (ColorHelper.CompareBaseRGB(ignoreColor[1], currentColor, 255)) continue;
+
+                    if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Top) && top.IsEmpty)
                         top = new Point(x, y);
-                    else if (isSimilarColor(color, RoleInfo.Bottom) && y > bottom.Y)
+                    else if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Bottom) && y > bottom.Y)
                         bottom = new Point(x, y);
-                    else if (isSimilarColor(color, RoleInfo.Left) && x < left.X && y > left.Y)
+                    else if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Left) && x < left.X && y > left.Y)
                         left = new Point(x, y);
-                    else if (isSimilarColor(color, RoleInfo.Right) && x > right.X && y > right.Y)
+                    else if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Right) && x > right.X && y > right.Y)
                         right = new Point(x, y);
+
+                    // 给小人涂上颜色
+                    if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Top, 50))
+                    {
+                        using (Graphics g = Graphics.FromImage(image))
+                        {
+                            g.FillEllipse(new SolidBrush(Color.Red), x, y, 2, 2);
+                            g.Dispose();
+                        }
+                    }
+
+                    /******************************* 目标 *******************************/
+                    // 搜索目标块的顶端像素
+                    if (targetTopPoint.IsEmpty)
+                    {
+                        if (!ColorHelper.CompareBaseRGB(currentColor, bitmap.GetPixel(x, y - 1), 10))
+                        {
+                            if (!ColorHelper.CompareBaseRGB(currentColor, bitmap.GetPixel(x - 1, y), 10))
+                            {
+                                if (!ColorHelper.CompareBaseRGB(RoleInfo.Top, bitmap.GetPixel(x, y), 30) &&
+                                !ColorHelper.CompareBaseRGB(RoleInfo.Top, bitmap.GetPixel(x, y + 1), 30) &&
+                                !ColorHelper.CompareBaseRGB(RoleInfo.Top, bitmap.GetPixel(x, y + 3), 30))
+                                {
+                                    targetTopPoint = new Point(x, y);
+                                    targetTopColor = currentColor;
+                                }
+                            }
+                        }
+                    }
+
+                    // 给目标块涂色
+                    if(!targetTopPoint.IsEmpty && ColorHelper.CompareBaseRGB(currentColor, targetTopColor, 10))
+                    {
+                        using (Graphics g = Graphics.FromImage(image))
+                        {
+                            g.FillEllipse(new SolidBrush(Color.Blue), x, y, 2, 2);
+                            g.Dispose();
+                        }
+                    }
                 }
             }
+            GC.Collect();
+            st.Stop();
+            var ems = st.ElapsedMilliseconds;
             
             var location = new Point(left.X + (right.X - left.X) / 2, left.Y);
             float rate = (float)(pictureBox1.Width * 1.00 / image.Width * 1.00);
@@ -370,19 +428,12 @@ namespace TiaoYiTiao
                 // 画边框
                 g.DrawRectangle(new Pen(Color.Red, 3), left.X, top.Y, right.X - left.X, bottom.Y - top.Y);
                 // 在中心画上一个点
-                g.FillEllipse(new SolidBrush(Color.Red), location.X - 2, location.Y - 2, 5, 5);
+                g.FillEllipse(new SolidBrush(Color.Green), location.X - 2, location.Y - 2, 5, 5);
                 //g.Save();
                 g.Dispose();
                 //image.Save("2.png");
             }
             GC.Collect();
-        }
-
-        // 计算是否是近似颜色
-        private bool isSimilarColor(Color c1, Color c2, int offset=100) // 颜色近似值
-        {
-            int tmp = (int)(Math.Pow((c1.R - c2.R), 2) + Math.Pow((c1.G - c2.G), 2) + Math.Pow((c1.B - c2.B), 2));
-            return Math.Abs(tmp - offset) <= offset;
         }
         #endregion
     }
