@@ -39,6 +39,11 @@ namespace TiaoYiTiao
         bool isAutoRecognize = false;
 
         /// <summary>
+        /// 是否自动跳
+        /// </summary>
+        bool isAutoJump = false;
+
+        /// <summary>
         /// 截屏后的文件
         /// </summary>
         string scPic = "1.png";
@@ -103,15 +108,8 @@ namespace TiaoYiTiao
                     return;
                 }
                 _end = ((MouseEventArgs)(e)).Location;
-                //计算两点直接的距离
-                double value = Math.Sqrt(Math.Abs(_start.X - _end.X) * Math.Abs(_start.X - _end.X) + Math.Abs(_start.Y - _end.Y) * Math.Abs(_start.Y - _end.Y));
 
-                _start = Point.Empty;
-
-                //this.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, (3.999022243950134 * value).ToString("0")); 
-                //3.999022243950134  这个是我通过多次模拟后得到 我这个分辨率的最佳时间
-                // 计算公式：比例=2560/设备屏幕高度
-                cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", (3.999022243950134 * value).ToString("0")));
+                this.jump();
             }
             else if (me.Button == MouseButtons.Right)//按下右键键是黑人底部的坐标
             {
@@ -201,11 +199,14 @@ namespace TiaoYiTiao
 
                         //img.Dispose();
                         img = null;
+
+                        if (isAutoJump)
+                            jump();
                     }
                     File.Delete(scPic);
 
                     GC.Collect();
-                    Thread.Sleep(1000);
+                    Thread.Sleep(3000);
                 }
                 if (img != null)
                     img.Dispose();
@@ -257,6 +258,22 @@ namespace TiaoYiTiao
         }
         #endregion
 
+        #region 跳
+        private void jump()
+        {
+            //计算两点直接的距离
+            double value = Math.Sqrt(Math.Abs(_start.X - _end.X) * Math.Abs(_start.X - _end.X) + Math.Abs(_start.Y - _end.Y) * Math.Abs(_start.Y - _end.Y));
+
+            _start = Point.Empty;
+            _end = Point.Empty;
+
+            //this.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, (3.999022243950134 * value).ToString("0")); 
+            //3.999022243950134  这个是我通过多次模拟后得到 我这个分辨率的最佳时间
+            // 计算公式：比例=2560/设备屏幕高度
+            cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", (3.999022243950134 * value).ToString("0")));
+        }
+        #endregion
+
         #region button
         // 菜单
         //private void button1_Click(object sender, EventArgs e)
@@ -287,30 +304,45 @@ namespace TiaoYiTiao
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
             this.isAutoRecognize = this.checkBox1.Checked;
+            this.checkBox2.Enabled = this.checkBox1.Checked;
+
+            if (!isAutoRecognize)
+            {
+                this.checkBox2.Checked = false;
+                this.isAutoJump = false;
+            }
+        }
+
+        // 自动跳
+        private void checkBox2_CheckedChanged(object sender, EventArgs e)
+        {
+            this.isAutoJump = this.checkBox2.Checked;
         }
         #endregion
 
         #region 自动识别并计算位置
-        // 小人尺寸：W:76, H:209
-        // 小人的颜色范围
+        // 小人的信息
         struct RoleInfo
         {
-            public static Color Top { get; private set; }
-            public static Color Bottom { get; private set; }
-            public static Color Left { get; private set; }
-            public static Color Right { get; private set; }
-            public static int Width { get; private set; }
-            public static int Height { get; private set; }
+            public static Color TopColor { get; set; }
+            public static Size @Size { get; set; }
+            public Point Top { get; set; }
+            public Point Left { get; set; }
+            public Point Right { get; set; }
+            public Point Bottom { get; set; }
+            public Point Center { get; set; }
 
             static RoleInfo()
             {
-                Top = Color.FromArgb(52, 52, 59);
-                Bottom = Color.FromArgb(54, 60, 102);
-                Left = Color.FromArgb(43, 43, 73);
-                Right = Color.FromArgb(58, 54, 81);
-                Width = 76;
-                Height = 209;
+                TopColor = Color.FromArgb(52, 52, 59);
+                Size = new Size(76, 209);
             }
+        }
+        // 目标位置信息
+        struct TargetPixel
+        {
+            public Color @Color { get; set; }
+            public Point @Point { get; set; }
         }
 
         /// <summary>
@@ -319,11 +351,10 @@ namespace TiaoYiTiao
         /// <param name="image"></param>
         private void autoRecognize(Image image)
         {
-            //var image_rect = new Rectangle(0, 0, image.Width, image.Height);
-            //var pw = image.Width;// pictureBox1.Width;
-            //var ph = image.Height;// pictureBox1.Height;
-
             Bitmap bitmap = new Bitmap(image);//, new Size(pw, ph)
+
+            RoleInfo role = new RoleInfo();
+            List<TargetPixel> targetList = new List<TargetPixel>();
 
             // 扫描区域：上下取中间1/3
             int topX, topY, bottomX, bottomY;
@@ -332,17 +363,26 @@ namespace TiaoYiTiao
             bottomX = image.Width;
             bottomY = image.Height * 2 / 3;
 
-            //per = Math.Min(1, per);
-            //per = Math.Max(0, per);
-            Point top, right, bottom, left;
-            top = right = bottom = left = new Point();
+            using (Graphics g = Graphics.FromImage(image))
+            {
+                g.DrawLine(new Pen(Color.Gray), 0, topY, image.Width, topY);
+                g.DrawLine(new Pen(Color.Gray), 0, bottomY, image.Width, bottomY);
+                g.Dispose();
+            }
+
+            //Point top, right, bottom, left;
+            //top = right = bottom = left = new Point();
 
             // 目标顶点位置
-            Point targetTopPoint = new Point();
-            Color targetTopColor = new Color();
+            //Point targetTopPoint = new Point();
+            //Color targetTopColor = new Color();
 
             // 左边距设定一个最大值
-            left.X = image.Width;
+            //left.X = image.Width;
+            role.Left = new Point(image.Width, 0);
+            //TargetInfo.Left = new Point(image.Width, 0);
+
+
             List<Color> ignoreColor = new List<Color>()
             {
                 bitmap.GetPixel(0, 0), // 第一个像素
@@ -361,51 +401,77 @@ namespace TiaoYiTiao
                 {
                     currentColor = bitmap.GetPixel(x, y);
 
+                    // 忽略与背景色相似的色块
+                    //if (ColorHelper.CompareBaseRGB(ignoreColor[0], color, 30)) continue;
+                    if (ColorHelper.CompareBaseRGB(ignoreColor[1], currentColor, 30)) continue;
+
                     /******************************* 小人 *******************************/
-                    //if (ColorHelper.CompareBaseRGB(ignoreColor[0], color, 255)) continue;
-                    //if (ColorHelper.CompareBaseRGB(ignoreColor[1], currentColor, 255)) continue;
+                    var isSimilarity = ColorHelper.CompareBaseRGB(currentColor, RoleInfo.TopColor, 30);
 
-                    if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Top) && top.IsEmpty)
-                        top = new Point(x, y);
-                    else if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Bottom) && y > bottom.Y)
-                        bottom = new Point(x, y);
-                    else if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Left) && x < left.X && y > left.Y)
-                        left = new Point(x, y);
-                    else if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Right) && x > right.X && y > right.Y)
-                        right = new Point(x, y);
-
-                    // 给小人涂上颜色
-                    if (ColorHelper.CompareBaseRGB(currentColor, RoleInfo.Top, 50))
+                    // 是否与小人的颜色匹配
+                    if (isSimilarity)
                     {
+                        // 获取小人的上下左右四个点的坐标
+                        if (role.Top.IsEmpty)
+                        {
+                            role.Top = new Point(x, y);
+                        }
+                        else
+                        {
+                            if (Math.Abs(role.Top.X - x) <= RoleInfo.Size.Width && Math.Abs(role.Top.Y - y) <= RoleInfo.Size.Height)
+                            {
+                                if (y > role.Bottom.Y)
+                                    role.Bottom = new Point(x, y);
+                                else if (x < role.Left.X && y > role.Left.Y)
+                                    role.Left = new Point(x, y);
+                                else if (x > role.Right.X && y > role.Right.Y)
+                                    role.Right = new Point(x, y);
+                            }
+                        }
+
+                        // 给小人涂上颜色
                         using (Graphics g = Graphics.FromImage(image))
                         {
-                            g.FillEllipse(new SolidBrush(Color.Red), x, y, 2, 2);
+                            g.FillEllipse(new SolidBrush(Color.Blue), x, y, 2, 2);
                             g.Dispose();
                         }
                     }
+                    
 
                     /******************************* 目标 *******************************/
                     // 搜索目标块的顶端像素
-                    if (targetTopPoint.IsEmpty)
+                    if (targetList.Count == 0)
                     {
                         if (!ColorHelper.CompareBaseRGB(currentColor, bitmap.GetPixel(x, y - 1), 10))
                         {
                             if (!ColorHelper.CompareBaseRGB(currentColor, bitmap.GetPixel(x - 1, y), 10))
                             {
-                                if (!ColorHelper.CompareBaseRGB(RoleInfo.Top, bitmap.GetPixel(x, y), 30) &&
-                                !ColorHelper.CompareBaseRGB(RoleInfo.Top, bitmap.GetPixel(x, y + 1), 30) &&
-                                !ColorHelper.CompareBaseRGB(RoleInfo.Top, bitmap.GetPixel(x, y + 3), 30))
+                                if (!ColorHelper.CompareBaseRGB(RoleInfo.TopColor, bitmap.GetPixel(x, y), 30) &&
+                                    !ColorHelper.CompareBaseRGB(RoleInfo.TopColor, bitmap.GetPixel(x, y + 1), 30) &&
+                                    !ColorHelper.CompareBaseRGB(RoleInfo.TopColor, bitmap.GetPixel(x, y + 3), 30))
                                 {
-                                    targetTopPoint = new Point(x, y);
-                                    targetTopColor = currentColor;
+                                    targetList.Add(new TargetPixel()
+                                    {
+                                        Color = currentColor,
+                                        Point = new Point(x, y)
+                                    });
                                 }
                             }
                         }
                     }
 
                     // 给目标块涂色
-                    if(!targetTopPoint.IsEmpty && ColorHelper.CompareBaseRGB(currentColor, targetTopColor, 10))
+                    if(targetList.Count > 0 && ColorHelper.CompareBaseRGB(currentColor, targetList[0].Color, 10))
                     {
+                        var last = targetList[targetList.Count - 1];
+                        if (Math.Abs(x - last.Point.X) > 10 && Math.Abs(y - last.Point.Y) > 10) continue;
+
+                        targetList.Add(new TargetPixel()
+                        {
+                            Color = currentColor,
+                            Point = new Point(x, y)
+                        });
+
                         using (Graphics g = Graphics.FromImage(image))
                         {
                             g.FillEllipse(new SolidBrush(Color.Blue), x, y, 2, 2);
@@ -415,23 +481,50 @@ namespace TiaoYiTiao
                 }
             }
             GC.Collect();
+            bitmap.Dispose();
+
             st.Stop();
             var ems = st.ElapsedMilliseconds;
-            
-            var location = new Point(left.X + (right.X - left.X) / 2, left.Y);
-            float rate = (float)(pictureBox1.Width * 1.00 / image.Width * 1.00);
-            _start = new Point((int)(rate * location.X), (int)(rate * location.Y));
 
-            bitmap.Dispose();
+            // 给小人画上边框
+            role.Center = new Point(role.Left.X + (role.Right.X - role.Left.X) / 2, role.Left.Y);
+            float rate = (float)(pictureBox1.Width * 1.00 / image.Width * 1.00);
+
             using (Graphics g = Graphics.FromImage(image))// pictureBox1.CreateGraphics())
             {
                 // 画边框
-                g.DrawRectangle(new Pen(Color.Red, 3), left.X, top.Y, right.X - left.X, bottom.Y - top.Y);
+                g.DrawRectangle(new Pen(Color.Red, 3), role.Left.X, role.Top.Y, role.Right.X - role.Left.X, role.Bottom.Y - role.Top.Y);
                 // 在中心画上一个点
-                g.FillEllipse(new SolidBrush(Color.Green), location.X - 2, location.Y - 2, 5, 5);
+                g.FillEllipse(new SolidBrush(Color.Red), role.Center.X - 5, role.Center.Y - 5, 11, 11);
                 //g.Save();
                 g.Dispose();
                 //image.Save("2.png");
+            }
+            GC.Collect();
+
+
+            // 画目标块的边框
+            using (Graphics g = Graphics.FromImage(image))
+            {                
+                var left = targetList.Min(t => t.Point.X);
+                var top = targetList.Min(t => t.Point.Y);
+                var right = targetList.Max(t => t.Point.X);
+                var bottom = targetList.Max(t => t.Point.Y);
+                var center = new Point(left + ((right - left) / 2), top + ((bottom - top) / 2));
+
+                // 画边框
+                g.DrawRectangle(new Pen(Color.Red, 3), left, top, right - left, bottom - top);
+                // 画中心点
+                g.FillEllipse(new SolidBrush(Color.Red), center.X - 5, center.Y - 5, 11, 11);
+
+                // 画小人与中心点的线
+                g.DrawLine(new Pen(Color.Red), role.Center.X, role.Center.Y, left + ((right - left) / 2), top + ((bottom - top) / 2));
+
+                g.Dispose();
+
+                // 设置起跳位置
+                _start = new Point((int)(rate * role.Center.X), (int)(rate * role.Center.Y));
+                _end = new Point((int)(rate * center.X), (int)(rate * center.Y));
             }
             GC.Collect();
         }
