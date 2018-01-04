@@ -56,6 +56,8 @@ namespace TiaoYiTiao
         private System.Timers.Timer _timer = new System.Timers.Timer(1200);
         private void Form1_Load(object sender, EventArgs e)
         {
+            this.toolStripStatusLabel2.Text = "";
+
             Task.Factory.StartNew(() =>
             {
                 _timer.AutoReset = false;//只需要执行一次
@@ -73,18 +75,23 @@ namespace TiaoYiTiao
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            var ps = Process.GetProcessesByName("adb");
+            foreach (var p in ps)
+                p.Kill();
+
             if (File.Exists(scPic)) File.Delete(scPic);
 
             string path = Path.GetDirectoryName(Program.AdbPath);
-            var fs = Directory.GetFiles(path);
-            foreach (var f in fs)
-            {
-                try
-                {
-                    File.Delete(f);
-                }
-                catch { }
-            }
+            Directory.Delete(path, true);
+            //var fs = Directory.GetFiles(path);
+            //foreach (var f in fs)
+            //{
+            //    try
+            //    {
+            //        File.Delete(f);
+            //    }
+            //    catch { }
+            //}
         }
         #endregion
 
@@ -100,6 +107,7 @@ namespace TiaoYiTiao
         private void pictureBox1_Click(object sender, EventArgs e)
         {
             var me = ((MouseEventArgs)(e));
+            this.chkRecognize.Checked = false;
             if (me.Button==MouseButtons.Left)//按下左键是黑人底部的坐标
             {
                 if (_start.IsEmpty)
@@ -108,13 +116,14 @@ namespace TiaoYiTiao
                     return;
                 }
                 _end = ((MouseEventArgs)(e)).Location;
+                toolStripStatusLabel2.Text = string.Format("起跳：{0}，目标：{1}", _start, _end);
 
                 this.jump();
             }
             else if (me.Button == MouseButtons.Right)//按下右键键是黑人底部的坐标
             {
                 _start = ((MouseEventArgs)(e)).Location;
-                //toolStripStatusLabel1.Text = "右健点击起始位置，左键点击结束位置";
+                toolStripStatusLabel2.Text = string.Format("起跳：{0}，目标：{1}", _start, _end);
             }
         }
         #endregion
@@ -164,14 +173,14 @@ namespace TiaoYiTiao
             {
                 HasAndroid = true;
                 isStop = false;
-                toolStripStatusLabel1.Text = string.Format("【{0}】右健点击起始位置，左键点击结束位置", text.Trim());
+                toolStripStatusLabel1.Text = string.Format("【{0}】", text.Trim());
 
                 bg_worker();
             }
         }
         #endregion
 
-        #region 后台执行截屏
+        #region 后台循环执行
         void bg_worker()
         {
             Task.Factory.StartNew(() =>
@@ -188,9 +197,8 @@ namespace TiaoYiTiao
 
                     using (img = Image.FromFile(scPic))
                     {
-                        // 尝试自动识别计算小人位置
-                        if (isAutoRecognize)
-                            autoRecognize(img);
+                        // 尝试自动识别
+                        if (isAutoRecognize) autoRecognize(img);
 
                         pictureBox1.Invoke(new Action(() =>
                         {
@@ -199,13 +207,18 @@ namespace TiaoYiTiao
 
                         //img.Dispose();
                         img = null;
-
-                        if (isAutoJump)
-                            jump();
                     }
-                    File.Delete(scPic);
+                    //File.Delete(scPic);
 
                     GC.Collect();
+
+                    // 自动跳
+                    if (isAutoJump)
+                    {
+                        Thread.Sleep(4000);
+                        // 再次判断，防止在些时间取消自动跳
+                        if (isAutoJump) jump();
+                    }
                     Thread.Sleep(3000);
                 }
                 if (img != null)
@@ -264,13 +277,13 @@ namespace TiaoYiTiao
             //计算两点直接的距离
             double value = Math.Sqrt(Math.Abs(_start.X - _end.X) * Math.Abs(_start.X - _end.X) + Math.Abs(_start.Y - _end.Y) * Math.Abs(_start.Y - _end.Y));
 
-            _start = Point.Empty;
-            _end = Point.Empty;
-
             //this.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, (3.999022243950134 * value).ToString("0")); 
             //3.999022243950134  这个是我通过多次模拟后得到 我这个分辨率的最佳时间
             // 计算公式：比例=2560/设备屏幕高度
             cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", (3.999022243950134 * value).ToString("0")));
+
+            _start = Point.Empty;
+            _end = Point.Empty;
         }
         #endregion
 
@@ -300,46 +313,100 @@ namespace TiaoYiTiao
         //    cmdAdb("shell input keyevent 26 ");
         //}
 
-        // 自动识别
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        // 帮助
+        private void btnHelper_Click(object sender, EventArgs e)
         {
-            this.isAutoRecognize = this.checkBox1.Checked;
-            this.checkBox2.Enabled = this.checkBox1.Checked;
+            lbMsg.Name = "abc";
+            //lbMsg.Visible = true;
+            lbMsg.AutoSize = false;
+            lbMsg.Size = pictureBox1.Size - new Size(20, 200);
+            lbMsg.Location = new Point(10, 10);
+            lbMsg.BackColor = Color.NavajoWhite;
+
+            lbMsg.Text = @"1. USB数据线连接安卓手机，并打开安卓手机的 USB 调试模式（打开方式请自动百度）。
+
+2. 手动模式：右键 单击小人底部（即 起跳位置），左键单击目标位置。
+
+3. 自动识别模式：
+
+    1). 如果直接点击 跳 按钮，则会根据自动识别出来的位置跳。
+
+    2). 如果识别不准确，可手动调整小人位置及目标位置，操作方法参考第2条。
+
+4. 自动跳：该模式下自动识别、自动跳，不需要人工参与。
+
+
+
+双击可关闭帮助窗口";
+
+            lbMsg.Show();
+        }
+
+        private void lbMsg_DoubleClick(object sender, EventArgs e)
+        {
+            lbMsg.Hide();
+        }
+
+        // 自动识别
+        private void chkRecognize_CheckedChanged(object sender, EventArgs e)
+        {
+            this.isAutoRecognize = this.chkRecognize.Checked;
+            this.chkJump.Enabled = this.chkRecognize.Checked;
+            this.btnJump.Enabled = this.chkRecognize.Checked;
 
             if (!isAutoRecognize)
             {
-                this.checkBox2.Checked = false;
+                this.chkJump.Checked = false;
                 this.isAutoJump = false;
+                this.btnJump.Enabled = false;
             }
         }
 
         // 自动跳
-        private void checkBox2_CheckedChanged(object sender, EventArgs e)
+        private void chkJump_CheckedChanged(object sender, EventArgs e)
         {
-            this.isAutoJump = this.checkBox2.Checked;
+            this.isAutoJump = this.chkJump.Checked;
+            this.btnJump.Enabled = !this.chkJump.Checked;
+        }
+
+        // 手动跳
+        private void btnJump_Click(object sender, EventArgs e)
+        {
+            jump();
         }
         #endregion
 
         #region 自动识别并计算位置
+        // 小人的识别高度比
+        const float characterHeightRate = 0.109f;
+        //小人的识别宽度比
+        const float characterWidthRate = 0.07f;
+
         // 小人的信息
-        struct RoleInfo
+        struct CharacterInfo
         {
-            public static Color TopColor { get; set; }
             public static Size @Size { get; set; }
+            public static Color TopColor { get; set; }
+            public static Color BottomColor { get; set; }
             public Point Top { get; set; }
+            public Point Bottom { get; set; }
             public Point Left { get; set; }
             public Point Right { get; set; }
-            public Point Bottom { get; set; }
             public Point Center { get; set; }
+            //public Point LeftTop { get; set; }
+            //public Point RightBottom { get; set; }
 
-            static RoleInfo()
+            static CharacterInfo()
             {
-                TopColor = Color.FromArgb(52, 52, 59);
+                TopColor = Color.FromArgb(52, 53, 59);
+                BottomColor = Color.FromArgb(54, 60, 102);
+                //Left = Color.FromArgb(43,43,73);
+                //Right = Color.FromArgb(58,54,81);
                 Size = new Size(76, 209);
             }
         }
         // 目标位置信息
-        struct TargetPixel
+        class RolePixel
         {
             public Color @Color { get; set; }
             public Point @Point { get; set; }
@@ -353,8 +420,11 @@ namespace TiaoYiTiao
         {
             Bitmap bitmap = new Bitmap(image);//, new Size(pw, ph)
 
-            RoleInfo role = new RoleInfo();
-            List<TargetPixel> targetList = new List<TargetPixel>();
+            float rate = (float)(pictureBox1.Width * 1.00 / image.Width * 1.00);
+
+            CharacterInfo character = new CharacterInfo();
+            List<RolePixel> targetList = new List<RolePixel>();
+            List<RolePixel> characterList = new List<RolePixel>();
 
             // 扫描区域：上下取中间1/3
             int topX, topY, bottomX, bottomY;
@@ -370,16 +440,9 @@ namespace TiaoYiTiao
                 g.Dispose();
             }
 
-            //Point top, right, bottom, left;
-            //top = right = bottom = left = new Point();
-
-            // 目标顶点位置
-            //Point targetTopPoint = new Point();
-            //Color targetTopColor = new Color();
-
             // 左边距设定一个最大值
             //left.X = image.Width;
-            role.Left = new Point(image.Width, 0);
+            //character.Left = new Point(image.Width, 0);
             //TargetInfo.Left = new Point(image.Width, 0);
 
 
@@ -391,48 +454,41 @@ namespace TiaoYiTiao
             };
 
             Color currentColor;
-
-            Stopwatch st = new Stopwatch();
-            st.Start();
+            Point currentPoint;
+            
             // 这一步操作比较耗时
             for (int y = topY, h = bottomY; y < h; y++)
             {
                 for (int x = topX, w = bottomX; x < w; x++)
                 {
                     currentColor = bitmap.GetPixel(x, y);
+                    currentPoint = new Point(x, y);
 
                     // 忽略与背景色相似的色块
-                    //if (ColorHelper.CompareBaseRGB(ignoreColor[0], color, 30)) continue;
                     if (ColorHelper.CompareBaseRGB(ignoreColor[1], currentColor, 30)) continue;
 
                     /******************************* 小人 *******************************/
-                    var isSimilarity = ColorHelper.CompareBaseRGB(currentColor, RoleInfo.TopColor, 30);
-
                     // 是否与小人的颜色匹配
-                    if (isSimilarity)
+                    if (ColorHelper.CompareBaseRGB(currentColor, CharacterInfo.TopColor, 30))
                     {
-                        // 获取小人的上下左右四个点的坐标
-                        if (role.Top.IsEmpty)
+                        characterList.Add(new RolePixel
                         {
-                            role.Top = new Point(x, y);
-                        }
-                        else
+                            Color = currentColor,
+                            Point = currentPoint
+                        });
+
+                        var bottom = y + (int)(image.Height * characterHeightRate) - 3;
+
+                        if (ColorHelper.CompareBaseRGB(bitmap.GetPixel(x, bottom), CharacterInfo.BottomColor, 30))
                         {
-                            if (Math.Abs(role.Top.X - x) <= RoleInfo.Size.Width && Math.Abs(role.Top.Y - y) <= RoleInfo.Size.Height)
-                            {
-                                if (y > role.Bottom.Y)
-                                    role.Bottom = new Point(x, y);
-                                else if (x < role.Left.X && y > role.Left.Y)
-                                    role.Left = new Point(x, y);
-                                else if (x > role.Right.X && y > role.Right.Y)
-                                    role.Right = new Point(x, y);
-                            }
+                            character.Top = currentPoint;
+                            character.Bottom = new Point(x, bottom);
                         }
 
                         // 给小人涂上颜色
                         using (Graphics g = Graphics.FromImage(image))
                         {
-                            g.FillEllipse(new SolidBrush(Color.Blue), x, y, 2, 2);
+                            g.FillEllipse(new SolidBrush(Color.Green), x, y, 2, 2);
                             g.Dispose();
                         }
                     }
@@ -446,11 +502,11 @@ namespace TiaoYiTiao
                         {
                             if (!ColorHelper.CompareBaseRGB(currentColor, bitmap.GetPixel(x - 1, y), 10))
                             {
-                                if (!ColorHelper.CompareBaseRGB(RoleInfo.TopColor, bitmap.GetPixel(x, y), 30) &&
-                                    !ColorHelper.CompareBaseRGB(RoleInfo.TopColor, bitmap.GetPixel(x, y + 1), 30) &&
-                                    !ColorHelper.CompareBaseRGB(RoleInfo.TopColor, bitmap.GetPixel(x, y + 3), 30))
+                                if (!ColorHelper.CompareBaseRGB(CharacterInfo.TopColor, bitmap.GetPixel(x, y), 30) &&
+                                    !ColorHelper.CompareBaseRGB(CharacterInfo.TopColor, bitmap.GetPixel(x, y + 1), 30) &&
+                                    !ColorHelper.CompareBaseRGB(CharacterInfo.TopColor, bitmap.GetPixel(x, y + 3), 30))
                                 {
-                                    targetList.Add(new TargetPixel()
+                                    targetList.Add(new RolePixel()
                                     {
                                         Color = currentColor,
                                         Point = new Point(x, y)
@@ -466,7 +522,7 @@ namespace TiaoYiTiao
                         var last = targetList[targetList.Count - 1];
                         if (Math.Abs(x - last.Point.X) > 10 && Math.Abs(y - last.Point.Y) > 10) continue;
 
-                        targetList.Add(new TargetPixel()
+                        targetList.Add(new RolePixel()
                         {
                             Color = currentColor,
                             Point = new Point(x, y)
@@ -483,19 +539,39 @@ namespace TiaoYiTiao
             GC.Collect();
             bitmap.Dispose();
 
-            st.Stop();
-            var ems = st.ElapsedMilliseconds;
 
+            // 识别小人
             // 给小人画上边框
-            role.Center = new Point(role.Left.X + (role.Right.X - role.Left.X) / 2, role.Left.Y);
-            float rate = (float)(pictureBox1.Width * 1.00 / image.Width * 1.00);
+            //character.Center = new Point(character.Left.X + (character.Right.X - character.Left.X) / 2, character.Left.Y);
 
-            using (Graphics g = Graphics.FromImage(image))// pictureBox1.CreateGraphics())
+            using (Graphics g = Graphics.FromImage(image))
             {
+                var width = (int)(image.Width * characterWidthRate);
+                var lefts = characterList.Where(t =>
+                    ColorHelper.CompareBaseRGB(t.Color, CharacterInfo.TopColor, 30) &&
+                    t.Point.X < character.Top.X &&
+                    t.Point.X >= (character.Top.X - width) &&
+                    t.Point.Y < character.Bottom.Y
+                ).OrderBy(t => t.Point.X);
+                var rights = characterList.Where(t =>
+                    ColorHelper.CompareBaseRGB(t.Color, CharacterInfo.TopColor, 30) &&
+                    t.Point.X > character.Top.X &&
+                    t.Point.X <= (character.Top.X + width) &&
+                    t.Point.Y < character.Bottom.Y
+                ).OrderBy(t => t.Point.X);
+
+                character.Left = lefts.Count() > 0 ? lefts.First().Point : new Point();
+                character.Right = rights.Count() > 0 ? rights.Last().Point : new Point();
+                
+                character.Center = new Point(character.Left.X + (character.Right.X - character.Left.X) / 2, character.Left.Y);
+
                 // 画边框
-                g.DrawRectangle(new Pen(Color.Red, 3), role.Left.X, role.Top.Y, role.Right.X - role.Left.X, role.Bottom.Y - role.Top.Y);
+                if (!character.Top.IsEmpty && !character.Bottom.IsEmpty && !character.Left.IsEmpty && !character.Right.IsEmpty)
+                    g.DrawRectangle(new Pen(Color.Red, 3), character.Left.X, character.Top.Y, character.Right.X - character.Left.X, character.Bottom.Y - character.Top.Y);
+
                 // 在中心画上一个点
-                g.FillEllipse(new SolidBrush(Color.Red), role.Center.X - 5, role.Center.Y - 5, 11, 11);
+                if (!character.Center.IsEmpty)
+                    g.FillEllipse(new SolidBrush(Color.Red), character.Center.X - 5, character.Center.Y - 5, 11, 11);
                 //g.Save();
                 g.Dispose();
                 //image.Save("2.png");
@@ -518,13 +594,16 @@ namespace TiaoYiTiao
                 g.FillEllipse(new SolidBrush(Color.Red), center.X - 5, center.Y - 5, 11, 11);
 
                 // 画小人与中心点的线
-                g.DrawLine(new Pen(Color.Red), role.Center.X, role.Center.Y, left + ((right - left) / 2), top + ((bottom - top) / 2));
+                if (!character.Center.IsEmpty)
+                    g.DrawLine(new Pen(Color.Red), character.Center.X, character.Center.Y, left + ((right - left) / 2), top + ((bottom - top) / 2));
 
                 g.Dispose();
 
                 // 设置起跳位置
-                _start = new Point((int)(rate * role.Center.X), (int)(rate * role.Center.Y));
+                _start = new Point((int)(rate * character.Center.X), (int)(rate * character.Center.Y));
                 _end = new Point((int)(rate * center.X), (int)(rate * center.Y));
+
+                toolStripStatusLabel2.Text = string.Format("起跳：{0}，目标：{1}", _start, _end);
             }
             GC.Collect();
         }

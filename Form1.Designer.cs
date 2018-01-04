@@ -32,8 +32,12 @@
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this.checkBox2 = new System.Windows.Forms.CheckBox();
+            this.btnJump = new System.Windows.Forms.Button();
+            this.btnHelper = new System.Windows.Forms.Button();
+            this.chkJump = new System.Windows.Forms.CheckBox();
+            this.chkRecognize = new System.Windows.Forms.CheckBox();
+            this.lbMsg = new System.Windows.Forms.Label();
+            this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.panel1.SuspendLayout();
@@ -42,7 +46,8 @@
             // statusStrip1
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripStatusLabel1});
+            this.toolStripStatusLabel1,
+            this.toolStripStatusLabel2});
             this.statusStrip1.Location = new System.Drawing.Point(0, 661);
             this.statusStrip1.Name = "statusStrip1";
             this.statusStrip1.Size = new System.Drawing.Size(369, 22);
@@ -69,36 +74,78 @@
             // 
             // panel1
             // 
-            this.panel1.Controls.Add(this.checkBox2);
-            this.panel1.Controls.Add(this.checkBox1);
+            this.panel1.Controls.Add(this.btnJump);
+            this.panel1.Controls.Add(this.btnHelper);
+            this.panel1.Controls.Add(this.chkJump);
+            this.panel1.Controls.Add(this.chkRecognize);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panel1.Location = new System.Drawing.Point(0, 635);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(369, 26);
             this.panel1.TabIndex = 3;
             // 
-            // checkBox1
+            // btnJump
             // 
-            this.checkBox1.AutoSize = true;
-            this.checkBox1.Location = new System.Drawing.Point(12, 7);
-            this.checkBox1.Name = "checkBox1";
-            this.checkBox1.Size = new System.Drawing.Size(72, 16);
-            this.checkBox1.TabIndex = 0;
-            this.checkBox1.Text = "自动识别";
-            this.checkBox1.UseVisualStyleBackColor = true;
-            this.checkBox1.CheckedChanged += new System.EventHandler(this.checkBox1_CheckedChanged);
+            this.btnJump.Enabled = false;
+            this.btnJump.Location = new System.Drawing.Point(157, 2);
+            this.btnJump.Name = "btnJump";
+            this.btnJump.Size = new System.Drawing.Size(27, 23);
+            this.btnJump.TabIndex = 3;
+            this.btnJump.Text = "跳";
+            this.btnJump.UseVisualStyleBackColor = true;
+            this.btnJump.Click += new System.EventHandler(this.btnJump_Click);
             // 
-            // checkBox2
+            // btnHelper
             // 
-            this.checkBox2.AutoSize = true;
-            this.checkBox2.Enabled = false;
-            this.checkBox2.Location = new System.Drawing.Point(90, 7);
-            this.checkBox2.Name = "checkBox2";
-            this.checkBox2.Size = new System.Drawing.Size(60, 16);
-            this.checkBox2.TabIndex = 1;
-            this.checkBox2.Text = "自动跳";
-            this.checkBox2.UseVisualStyleBackColor = true;
-            this.checkBox2.CheckedChanged += new System.EventHandler(this.checkBox2_CheckedChanged);
+            this.btnHelper.Location = new System.Drawing.Point(337, 3);
+            this.btnHelper.Name = "btnHelper";
+            this.btnHelper.Size = new System.Drawing.Size(27, 20);
+            this.btnHelper.TabIndex = 2;
+            this.btnHelper.Text = "?";
+            this.btnHelper.UseVisualStyleBackColor = true;
+            this.btnHelper.Click += new System.EventHandler(this.btnHelper_Click);
+            // 
+            // chkJump
+            // 
+            this.chkJump.AutoSize = true;
+            this.chkJump.Enabled = false;
+            this.chkJump.Location = new System.Drawing.Point(90, 7);
+            this.chkJump.Name = "chkJump";
+            this.chkJump.Size = new System.Drawing.Size(60, 16);
+            this.chkJump.TabIndex = 1;
+            this.chkJump.Text = "自动跳";
+            this.chkJump.UseVisualStyleBackColor = true;
+            this.chkJump.CheckedChanged += new System.EventHandler(this.chkJump_CheckedChanged);
+            // 
+            // chkRecognize
+            // 
+            this.chkRecognize.AutoSize = true;
+            this.chkRecognize.Location = new System.Drawing.Point(12, 7);
+            this.chkRecognize.Name = "chkRecognize";
+            this.chkRecognize.Size = new System.Drawing.Size(72, 16);
+            this.chkRecognize.TabIndex = 0;
+            this.chkRecognize.Text = "自动识别";
+            this.chkRecognize.UseVisualStyleBackColor = true;
+            this.chkRecognize.CheckedChanged += new System.EventHandler(this.chkRecognize_CheckedChanged);
+            // 
+            // lbMsg
+            // 
+            this.lbMsg.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.lbMsg.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.lbMsg.Location = new System.Drawing.Point(27, 67);
+            this.lbMsg.Name = "lbMsg";
+            this.lbMsg.Padding = new System.Windows.Forms.Padding(5);
+            this.lbMsg.Size = new System.Drawing.Size(94, 80);
+            this.lbMsg.TabIndex = 4;
+            this.lbMsg.Text = "help";
+            this.lbMsg.Visible = false;
+            this.lbMsg.DoubleClick += new System.EventHandler(this.lbMsg_DoubleClick);
+            // 
+            // toolStripStatusLabel2
+            // 
+            this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
+            this.toolStripStatusLabel2.Size = new System.Drawing.Size(43, 17);
+            this.toolStripStatusLabel2.Text = "位置：";
             // 
             // Form1
             // 
@@ -106,6 +153,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(369, 683);
+            this.Controls.Add(this.lbMsg);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.statusStrip1);
@@ -132,8 +180,12 @@
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Panel panel1;
-        private System.Windows.Forms.CheckBox checkBox1;
-        private System.Windows.Forms.CheckBox checkBox2;
+        private System.Windows.Forms.CheckBox chkRecognize;
+        private System.Windows.Forms.CheckBox chkJump;
+        private System.Windows.Forms.Button btnHelper;
+        private System.Windows.Forms.Label lbMsg;
+        private System.Windows.Forms.Button btnJump;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel2;
     }
 }
 
