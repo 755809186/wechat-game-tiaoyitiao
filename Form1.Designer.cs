@@ -30,6 +30,7 @@
         {
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.panel1 = new System.Windows.Forms.Panel();
             this.btnJump = new System.Windows.Forms.Button();
@@ -37,7 +38,6 @@
             this.chkJump = new System.Windows.Forms.CheckBox();
             this.chkRecognize = new System.Windows.Forms.CheckBox();
             this.lbMsg = new System.Windows.Forms.Label();
-            this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.panel1.SuspendLayout();
@@ -59,6 +59,12 @@
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             this.toolStripStatusLabel1.Size = new System.Drawing.Size(88, 17);
             this.toolStripStatusLabel1.Text = "正在检查设备...";
+            // 
+            // toolStripStatusLabel2
+            // 
+            this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
+            this.toolStripStatusLabel2.Size = new System.Drawing.Size(43, 17);
+            this.toolStripStatusLabel2.Text = "位置：";
             // 
             // pictureBox1
             // 
@@ -120,6 +126,7 @@
             // chkRecognize
             // 
             this.chkRecognize.AutoSize = true;
+            this.chkRecognize.Enabled = false;
             this.chkRecognize.Location = new System.Drawing.Point(12, 7);
             this.chkRecognize.Name = "chkRecognize";
             this.chkRecognize.Size = new System.Drawing.Size(72, 16);
@@ -140,12 +147,6 @@
             this.lbMsg.Text = "help";
             this.lbMsg.Visible = false;
             this.lbMsg.DoubleClick += new System.EventHandler(this.lbMsg_DoubleClick);
-            // 
-            // toolStripStatusLabel2
-            // 
-            this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
-            this.toolStripStatusLabel2.Size = new System.Drawing.Size(43, 17);
-            this.toolStripStatusLabel2.Text = "位置：";
             // 
             // Form1
             // 
