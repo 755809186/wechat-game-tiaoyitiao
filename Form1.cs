@@ -188,10 +188,17 @@ namespace TiaoYiTiao
         #endregion
 
         #region 后台循环执行
+        // 每一次跳跃比上一次多 20--50次之间，然后自杀一次
+        int max_jump_count = 0; // 最多跳跃次数
+        int jump_count = 0; // 本次跳跃次数
+        int last_jump_count = 0; // 上次跳跃次数
+        int per_jump_count= 0; // 每局跳跃的次数
+        int[] per_jump_range = new int[] { 20, 50 };
+
         void bg_worker()
         {
             ImageHelper imageHelper = new ImageHelper(this.pictureBox1);
-
+            
             Task.Factory.StartNew(() =>
             {
                 Image img = null;
@@ -208,22 +215,42 @@ namespace TiaoYiTiao
                     {
                         if (img == null)
                         {
-                            Thread.Sleep(3000);
                             continue;
                         }
 
-                        // 尝试自动识别
+                        #region 尝试自动识别
                         if (isAutoRecognize)
                         {
                             //autoRecognize(img);
                             var start_end_location = imageHelper.autoRecognize(img);
-                            if (start_end_location == null) continue;
-
+                            //if (start_end_location == null) continue;
                             _start = start_end_location[0];
                             _end = start_end_location[1];
 
-                            toolStripStatusLabel2.Text = string.Format("起跳：{0}，目标：{1}", _start, _end);
+                            //toolStripStatusLabel2.Text = string.Format("起跳：{0}，目标：{1}", _start, _end);
                         }
+                        #endregion
+
+                        #region 自动跳
+                        if (isAutoJump)
+                        {
+                            // 随机生成每局跳跃的次数
+                            if (max_jump_count > 0 && per_jump_count == 0)
+                            {
+                                if (last_jump_count + per_jump_range[1] > max_jump_count)
+                                    per_jump_count = max_jump_count - last_jump_count;
+                                else
+                                    per_jump_count = new Random().Next(per_jump_range[0], per_jump_range[1]);
+                            }
+
+                            // 开始界面
+                            if (_start.IsEmpty && _end.IsEmpty)
+                            {
+                                jump_count = 0;
+                                tap_play_again();
+                            }
+                        }
+                        #endregion
 
                         pictureBox1.Invoke(new Action(() =>
                         {
@@ -242,13 +269,35 @@ namespace TiaoYiTiao
 
                     GC.Collect();
 
-                    // 自动跳
-                    if (isAutoJump)
+                    #region 自动跳 判断是继续跳，还是结束/自杀
+                    if (isAutoJump && !_start.IsEmpty && !_end.IsEmpty)
                     {
                         Thread.Sleep(new Random().Next(800, 2000));
                         // 再次判断，防止在此时间取消自动跳
-                        if (isAutoJump) jump();
+                        if (isAutoJump)
+                        {
+                            // 计算是否需要自杀一次
+                            if (max_jump_count > 0 && (jump_count > last_jump_count + per_jump_count - 1))
+                            {
+                                last_jump_count = jump_count;
+                                per_jump_count = 0;
+
+                                if (jump_count > max_jump_count - 1)
+                                {
+                                    // 结束
+                                    this.isAutoJump = false;
+                                    btnJump_Click(this.btnJump, null);
+                                }
+
+                                kill_self();
+                            }
+                            else
+                            {
+                                jump();
+                            }
+                        }
                     }
+                    #endregion
                 }
                 if (img != null) img.Dispose();
             });
@@ -302,6 +351,12 @@ namespace TiaoYiTiao
         #region 跳
         private void jump()
         {
+            jump_count++;
+            if (isAutoJump && max_jump_count > 0)
+                toolStripStatusLabel2.Text = string.Format("最多次数：{0}，本局次数：{1}/{2}", max_jump_count == 0 ? "不限" : max_jump_count.ToString(), jump_count, per_jump_count + last_jump_count);
+            else
+                toolStripStatusLabel2.Text = string.Format("本局次数：{0}", jump_count);
+
             //计算两点直接的距离
             double value = Math.Sqrt(Math.Abs(_start.X - _end.X) * Math.Abs(_start.X - _end.X) + Math.Abs(_start.Y - _end.Y) * Math.Abs(_start.Y - _end.Y));
 
@@ -315,19 +370,133 @@ namespace TiaoYiTiao
             coefficient = (float)(1495f / (float)this.pictureBox1.Width);
             //coefficient = (float)(2560f / (float)this.pictureBox1.Height);
 
-            double time = coefficient * value;
+            double duration = coefficient * value;
 
-            //toolStripStatusLabel2.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, time.ToString("0")); 
-            cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", time.ToString("0")));
-
-            Thread.Sleep(3000);
+            //toolStripStatusLabel2.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, duration.ToString("0")); 
+            cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", duration.ToString("0")));
 
             _start = Point.Empty;
             _end = Point.Empty;
+            Thread.Sleep(2500);
+        }
+
+        private void kill_self()
+        {
+            cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", 1200));
+
+            //_start = Point.Empty;
+            //_end = Point.Empty;
+            Thread.Sleep(3000);
+        }
+
+        // 
+        private void tap_play_again()
+        {
+            cmdAdb("shell input tap 384 1564");
+            Thread.Sleep(3000);
         }
         #endregion
 
         #region button
+        // 帮助
+        private void btnHelper_Click(object sender, EventArgs e)
+        {
+            lbMsg.Name = "abc";
+            //lbMsg.Visible = true;
+            lbMsg.AutoSize = false;
+            lbMsg.Size = pictureBox1.Size - new Size(20, 200);
+            lbMsg.Location = new Point(10, 10);
+            lbMsg.BackColor = Color.NavajoWhite;
+
+            lbMsg.Text = @"1. USB数据线连接安卓手机，并打开安卓手机的 USB 调试模式（打开方式请自动百度）。
+
+2. 手动模式：右键 单击小人底部（即 起跳位置），左键单击目标位置。
+
+3. 自动识别模式：
+
+    1). 如果直接点击 跳 按钮，则会根据自动识别出来的位置跳。
+
+    2). 如果识别不准确，可手动调整小人位置及目标位置，操作方法参考第2条。
+
+4. 自动跳：该模式下自动识别、自动跳，不需要人工参与。
+
+    1). 如果设置了跳跃次数，那么分多局游戏，每局游戏开始前，会自动计算一个随机数（n），每一局会比上一局多跳 n 次。
+
+    2). 如果识别错误，或中间掉下，都会自动开始新的一局游戏，直到跳跃次数达到设置的值。
+
+    3). 基本上，跳50次，能达到500分左右。
+
+
+
+双击可关闭帮助窗口";
+
+            lbMsg.Show();
+        }
+
+        private void lbMsg_DoubleClick(object sender, EventArgs e)
+        {
+            lbMsg.Hide();
+        }
+
+        // 自动识别
+        private void chkRecognize_CheckedChanged(object sender, EventArgs e)
+        {
+            this.isAutoRecognize = this.chkRecognize.Checked;
+            this.chkAutoJump.Enabled = this.chkRecognize.Checked;
+            this.btnJump.Enabled = this.chkRecognize.Checked;
+
+            if (!isAutoRecognize)
+            {
+                this.chkAutoJump.Checked = false;
+                this.isAutoJump = false;
+                this.btnJump.Enabled = false;
+            }
+        }
+
+        // 自动跳
+        private void chkJump_CheckedChanged(object sender, EventArgs e)
+        {
+            //this.isAutoJump = this.chkAutoJump.Checked;
+            this.nJumpCount.Enabled = this.chkAutoJump.Checked;
+            //this.btnJump.Enabled = !this.chkAutoJump.Checked;
+        }
+
+        // 手动跳
+        private void btnJump_Click(object sender, EventArgs e)
+        {
+            if (this.chkAutoJump.Checked)
+            {
+                if (this.btnJump.Text == "跳")
+                {
+                    this.isAutoJump = this.chkAutoJump.Checked;
+                    this.chkAutoJump.Enabled = false;
+                    this.nJumpCount.Enabled = false;
+                    this.max_jump_count = (int)this.nJumpCount.Value;
+
+                    this.btnJump.Text = "停";
+
+                    jump();
+                }
+                else
+                {
+                    this.isAutoJump = false;
+                    this.chkAutoJump.Enabled = true;
+                    this.nJumpCount.Enabled = true;
+
+                    this.btnJump.Text = "跳";
+                }
+            }
+            else
+            {
+                jump();
+            }
+        }
+
+        // 
+        private void nJumpCount_ValueChanged(object sender, EventArgs e)
+        {
+            //this.max_jump_count = (int)this.nJumpCount.Value;
+        }
         // 菜单
         //private void button1_Click(object sender, EventArgs e)
         //{
@@ -352,68 +521,6 @@ namespace TiaoYiTiao
         //    // 电源键
         //    cmdAdb("shell input keyevent 26 ");
         //}
-
-        // 帮助
-        private void btnHelper_Click(object sender, EventArgs e)
-        {
-            lbMsg.Name = "abc";
-            //lbMsg.Visible = true;
-            lbMsg.AutoSize = false;
-            lbMsg.Size = pictureBox1.Size - new Size(20, 200);
-            lbMsg.Location = new Point(10, 10);
-            lbMsg.BackColor = Color.NavajoWhite;
-
-            lbMsg.Text = @"1. USB数据线连接安卓手机，并打开安卓手机的 USB 调试模式（打开方式请自动百度）。
-
-2. 手动模式：右键 单击小人底部（即 起跳位置），左键单击目标位置。
-
-3. 自动识别模式：
-
-    1). 如果直接点击 跳 按钮，则会根据自动识别出来的位置跳。
-
-    2). 如果识别不准确，可手动调整小人位置及目标位置，操作方法参考第2条。
-
-4. 自动跳：该模式下自动识别、自动跳，不需要人工参与。
-
-
-
-双击可关闭帮助窗口";
-
-            lbMsg.Show();
-        }
-
-        private void lbMsg_DoubleClick(object sender, EventArgs e)
-        {
-            lbMsg.Hide();
-        }
-
-        // 自动识别
-        private void chkRecognize_CheckedChanged(object sender, EventArgs e)
-        {
-            this.isAutoRecognize = this.chkRecognize.Checked;
-            this.chkJump.Enabled = this.chkRecognize.Checked;
-            this.btnJump.Enabled = this.chkRecognize.Checked;
-
-            if (!isAutoRecognize)
-            {
-                this.chkJump.Checked = false;
-                this.isAutoJump = false;
-                this.btnJump.Enabled = false;
-            }
-        }
-
-        // 自动跳
-        private void chkJump_CheckedChanged(object sender, EventArgs e)
-        {
-            this.isAutoJump = this.chkJump.Checked;
-            this.btnJump.Enabled = !this.chkJump.Checked;
-        }
-
-        // 手动跳
-        private void btnJump_Click(object sender, EventArgs e)
-        {
-            jump();
-        }
         #endregion
     }
 }

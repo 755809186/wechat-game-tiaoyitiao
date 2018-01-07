@@ -35,12 +35,14 @@
             this.panel1 = new System.Windows.Forms.Panel();
             this.btnJump = new System.Windows.Forms.Button();
             this.btnHelper = new System.Windows.Forms.Button();
-            this.chkJump = new System.Windows.Forms.CheckBox();
+            this.chkAutoJump = new System.Windows.Forms.CheckBox();
             this.chkRecognize = new System.Windows.Forms.CheckBox();
             this.lbMsg = new System.Windows.Forms.Label();
+            this.nJumpCount = new System.Windows.Forms.NumericUpDown();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.panel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.nJumpCount)).BeginInit();
             this.SuspendLayout();
             // 
             // statusStrip1
@@ -80,9 +82,10 @@
             // 
             // panel1
             // 
+            this.panel1.Controls.Add(this.nJumpCount);
             this.panel1.Controls.Add(this.btnJump);
             this.panel1.Controls.Add(this.btnHelper);
-            this.panel1.Controls.Add(this.chkJump);
+            this.panel1.Controls.Add(this.chkAutoJump);
             this.panel1.Controls.Add(this.chkRecognize);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panel1.Location = new System.Drawing.Point(0, 635);
@@ -93,7 +96,7 @@
             // btnJump
             // 
             this.btnJump.Enabled = false;
-            this.btnJump.Location = new System.Drawing.Point(157, 2);
+            this.btnJump.Location = new System.Drawing.Point(221, 2);
             this.btnJump.Name = "btnJump";
             this.btnJump.Size = new System.Drawing.Size(27, 23);
             this.btnJump.TabIndex = 3;
@@ -111,23 +114,23 @@
             this.btnHelper.UseVisualStyleBackColor = true;
             this.btnHelper.Click += new System.EventHandler(this.btnHelper_Click);
             // 
-            // chkJump
+            // chkAutoJump
             // 
-            this.chkJump.AutoSize = true;
-            this.chkJump.Enabled = false;
-            this.chkJump.Location = new System.Drawing.Point(90, 7);
-            this.chkJump.Name = "chkJump";
-            this.chkJump.Size = new System.Drawing.Size(60, 16);
-            this.chkJump.TabIndex = 1;
-            this.chkJump.Text = "自动跳";
-            this.chkJump.UseVisualStyleBackColor = true;
-            this.chkJump.CheckedChanged += new System.EventHandler(this.chkJump_CheckedChanged);
+            this.chkAutoJump.AutoSize = true;
+            this.chkAutoJump.Enabled = false;
+            this.chkAutoJump.Location = new System.Drawing.Point(90, 5);
+            this.chkAutoJump.Name = "chkAutoJump";
+            this.chkAutoJump.Size = new System.Drawing.Size(60, 16);
+            this.chkAutoJump.TabIndex = 1;
+            this.chkAutoJump.Text = "自动跳";
+            this.chkAutoJump.UseVisualStyleBackColor = true;
+            this.chkAutoJump.CheckedChanged += new System.EventHandler(this.chkJump_CheckedChanged);
             // 
             // chkRecognize
             // 
             this.chkRecognize.AutoSize = true;
             this.chkRecognize.Enabled = false;
-            this.chkRecognize.Location = new System.Drawing.Point(12, 7);
+            this.chkRecognize.Location = new System.Drawing.Point(12, 5);
             this.chkRecognize.Name = "chkRecognize";
             this.chkRecognize.Size = new System.Drawing.Size(72, 16);
             this.chkRecognize.TabIndex = 0;
@@ -147,6 +150,19 @@
             this.lbMsg.Text = "help";
             this.lbMsg.Visible = false;
             this.lbMsg.DoubleClick += new System.EventHandler(this.lbMsg_DoubleClick);
+            // 
+            // nJumpCount
+            // 
+            this.nJumpCount.Location = new System.Drawing.Point(156, 3);
+            this.nJumpCount.Maximum = new decimal(new int[] {
+            100000,
+            0,
+            0,
+            0});
+            this.nJumpCount.Name = "nJumpCount";
+            this.nJumpCount.Size = new System.Drawing.Size(43, 21);
+            this.nJumpCount.TabIndex = 4;
+            this.nJumpCount.ValueChanged += new System.EventHandler(this.nJumpCount_ValueChanged);
             // 
             // Form1
             // 
@@ -170,6 +186,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.nJumpCount)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -182,11 +199,12 @@
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.CheckBox chkRecognize;
-        private System.Windows.Forms.CheckBox chkJump;
+        private System.Windows.Forms.CheckBox chkAutoJump;
         private System.Windows.Forms.Button btnHelper;
         private System.Windows.Forms.Label lbMsg;
         private System.Windows.Forms.Button btnJump;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel2;
+        private System.Windows.Forms.NumericUpDown nJumpCount;
     }
 }
 

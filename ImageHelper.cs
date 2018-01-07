@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -95,6 +96,19 @@ namespace TiaoYiTiao
             #endregion
 
             #region 扫描图片
+            // 判断是不是重新开始的界面
+            // Color.FromArgb(51, 42, 29) //这个颜色是开始界面的背景色
+            // 384, 1564 再玩一局  绿色箭头位置
+            // 675, 1557 再玩一局  “局”字右上部位置
+            if (ColorHelper.CompareBaseRGB(bitmap.GetPixel(384, 1564), Color.FromArgb(7, 200, 123), 10) &&
+                ColorHelper.CompareBaseRGB(bitmap.GetPixel(675, 1557), Color.FromArgb(3, 3, 3), 10))
+            {
+                return start_end_location;
+            }
+
+            Stopwatch st1 = new Stopwatch();
+            st1.Start();
+
             Color currentColor;
             Point currentPoint;
             // 这一步操作比较耗时
@@ -117,7 +131,6 @@ namespace TiaoYiTiao
 
                         // 给小人涂上颜色
                         g.FillEllipse(new SolidBrush(Color.Green), x, y, 2, 2);
-                        Application.DoEvents();
                     }
                     #endregion
 
@@ -143,17 +156,20 @@ namespace TiaoYiTiao
                     {
                         targetLocation.Add(currentPoint);
                         g.FillEllipse(new SolidBrush(Color.Blue), x, y, 2, 2);
-                        Application.DoEvents();
                     }
                     #endregion
                 }
             }
             bitmap.Dispose();
+            st1.Stop();
             #endregion
 
 
             #region 画小人的外框
+            Stopwatch st2 = new Stopwatch();
+            st2.Start();
             {
+
                 var width = (int)(image.Width * characterWidthRate);
                 var height = (int)(image.Height * characterHeightRate);
 
@@ -172,17 +188,20 @@ namespace TiaoYiTiao
                     character.Bottom = bottom;
                     character.Left = left;
                     character.Right = right;
-
                     character.Center = new Point(left.X + (right.X - left.X) / 2, left.Y);
+
                     // 画边框
                     g.DrawRectangle(new Pen(Color.Red, 3), left.X, top.Y, right.X - left.X, bottom.Y - top.Y);
                     // 在中心画上一个点
                     g.FillEllipse(new SolidBrush(Color.Red), character.Center.X - 5, character.Center.Y - 5, 11, 11);
                 }
             }
+            st2.Stop();
             #endregion
 
             #region 画目标块的边框
+            Stopwatch st3 = new Stopwatch();
+            st3.Start();
             {
                 var top = targetLocation.OrderBy(t => t.Y).FirstOrDefault();
                 var bottom = targetLocation.Where(t => t.X == top.X).OrderByDescending(t => t.Y).FirstOrDefault();
@@ -206,12 +225,17 @@ namespace TiaoYiTiao
                 start_end_location[0] = new Point((int)(rate * character.Center.X), (int)(rate * character.Center.Y));
                 start_end_location[1] = new Point((int)(rate * center.X), (int)(rate * center.Y));
             }
+            st3.Stop();
             #endregion
 
             //toolStripStatusLabel2.Text = string.Format("起跳：{0}，目标：{1}", _start, _end);
 
             g.Dispose();
             GC.Collect();
+
+            //var st11 = st1.ElapsedMilliseconds;
+            //var st22 = st2.ElapsedMilliseconds;
+            //var st33 = st3.ElapsedMilliseconds;
 
             return start_end_location;
         }
