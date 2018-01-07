@@ -304,11 +304,20 @@ namespace TiaoYiTiao
         {
             //计算两点直接的距离
             double value = Math.Sqrt(Math.Abs(_start.X - _end.X) * Math.Abs(_start.X - _end.X) + Math.Abs(_start.Y - _end.Y) * Math.Abs(_start.Y - _end.Y));
-            double time = 3.999022243950134 * value;
+
+            // 蓄力时间 = 距离 * 力度系数
+            // “距离”就是棋子位置与跳跃落脚点位置的距离，根据上面的方法得出这两个位置的坐标点后，根据直角三角形的勾股定理即可求出，
+            // 力度系数：
+            // 计算公式：1495 / 手机分辨率宽度
+            // 计算公式：2560 / 手机分辨率高度
+            float coefficient;
+            //coefficient = 3.999022243950134f;//  这个是我通过多次模拟后得到 我这个分辨率的最佳时间
+            coefficient = (float)(1495f / (float)this.pictureBox1.Width);
+            //coefficient = (float)(2560f / (float)this.pictureBox1.Height);
+
+            double time = coefficient * value;
 
             //toolStripStatusLabel2.Text = string.Format("两点之间的距离：{0}，需要按下时间：{1}", value, time.ToString("0")); 
-            //3.999022243950134  这个是我通过多次模拟后得到 我这个分辨率的最佳时间
-            // 计算公式：比例=2560/设备屏幕高度
             cmdAdb(string.Format("shell input swipe 100 100 200 200 {0}", time.ToString("0")));
 
             Thread.Sleep(3000);
