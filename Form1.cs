@@ -188,12 +188,12 @@ namespace TiaoYiTiao
         #endregion
 
         #region 后台循环执行
-        // 每一次跳跃比上一次多 20--50次之间，然后自杀一次
+        // 每一次跳跃比上一次多 n 次，然后自杀一次
         int max_jump_count = 0; // 最多跳跃次数
         int jump_count = 0; // 本次跳跃次数
         int last_jump_count = 0; // 上次跳跃次数
         int per_jump_count= 0; // 每局跳跃的次数
-        int[] per_jump_range = new int[] { 20, 50 };
+        int[] per_jump_range = new int[] { 15, 30 };
 
         void bg_worker()
         {
