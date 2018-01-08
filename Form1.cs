@@ -193,7 +193,7 @@ namespace TiaoYiTiao
         int jump_count = 0; // 本次跳跃次数
         int last_jump_count = 0; // 上次跳跃次数
         int per_jump_count= 0; // 每局跳跃的次数
-        int[] per_jump_range = new int[] { 15, 30 };
+        int[] per_jump_range = new int[] { 10, 20 };
 
         void bg_worker()
         {
@@ -286,6 +286,7 @@ namespace TiaoYiTiao
                                 {
                                     // 结束
                                     this.isAutoJump = false;
+                                    max_jump_count = last_jump_count = jump_count = 0;
                                     btnJump_Click(this.btnJump, null);
                                 }
 
