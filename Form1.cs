@@ -272,7 +272,7 @@ namespace TiaoYiTiao
                     #region 自动跳 判断是继续跳，还是结束/自杀
                     if (isAutoJump && !_start.IsEmpty && !_end.IsEmpty)
                     {
-                        Thread.Sleep(new Random().Next(800, 2000));
+                        Thread.Sleep(new Random().Next(800, 1500));
                         // 再次判断，防止在此时间取消自动跳
                         if (isAutoJump)
                         {
@@ -378,7 +378,7 @@ namespace TiaoYiTiao
 
             _start = Point.Empty;
             _end = Point.Empty;
-            Thread.Sleep(2500);
+            Thread.Sleep(1500);
         }
 
         private void kill_self()
